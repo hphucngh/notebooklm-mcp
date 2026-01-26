@@ -109,15 +109,25 @@ touch ~/Library/Application\ Support/Claude/claude_desktop_config.json
 open ~/Library/Application\ Support/Claude/claude_desktop_config.json
 ```
 
-### 3.2 Add the MCP Server Configuration
+### 3.2 Find Your uv Path
 
-**If the file is empty**, paste this entire block:
+Claude Desktop doesn't inherit your shell's PATH, so you need the **full path** to `uv`:
+
+```bash
+which uv
+```
+
+This will output something like `/Users/alfredang/.local/bin/uv` - use this path in the next step.
+
+### 3.3 Add the MCP Server Configuration
+
+**If the file is empty**, paste this entire block (replace the uv path if different):
 
 ```json
 {
   "mcpServers": {
     "notebooklm": {
-      "command": "uv",
+      "command": "/Users/alfredang/.local/bin/uv",
       "args": [
         "--directory",
         "/Users/alfredang/projects/notebooklm-assistant",
@@ -137,7 +147,7 @@ open ~/Library/Application\ Support/Claude/claude_desktop_config.json
   "mcpServers": {
     "existing-server": { ... },
     "notebooklm": {
-      "command": "uv",
+      "command": "/Users/alfredang/.local/bin/uv",
       "args": [
         "--directory",
         "/Users/alfredang/projects/notebooklm-assistant",
@@ -150,13 +160,13 @@ open ~/Library/Application\ Support/Claude/claude_desktop_config.json
 }
 ```
 
-### 3.3 Restart Claude Desktop
+### 3.4 Restart Claude Desktop
 
 1. **Fully quit** Claude Desktop (Cmd+Q, not just close the window)
 2. Reopen Claude Desktop
 3. Look for the **hammer icon** (🔨) in the chat input area - this indicates MCP tools are available
 
-### 3.4 Verify Connection
+### 3.5 Verify Connection
 
 In Claude Desktop, type:
 ```
@@ -238,16 +248,30 @@ Once configured, you can use natural language commands in Claude Desktop or Clau
 
 ## Troubleshooting
 
-### "Server disconnected" Error
+### "Server disconnected" or "Failed to spawn process: No such file or directory"
 
-**Cause**: Authentication expired or client initialization failed.
+**Cause**: Claude Desktop can't find `uv` because it doesn't inherit your shell's PATH.
 
-**Solution**:
+**Solution**: Use the **full path** to `uv` in the config:
+
+1. Find your uv path:
+   ```bash
+   which uv
+   ```
+
+2. Update `claude_desktop_config.json` to use the full path:
+   ```json
+   "command": "/Users/alfredang/.local/bin/uv"
+   ```
+   (Replace with your actual path from step 1)
+
+3. Fully restart Claude Desktop (Cmd+Q and reopen)
+
+**If authentication expired**, also run:
 ```bash
 cd /Users/alfredang/projects/notebooklm-assistant
 uv run notebooklm login
 ```
-Then restart Claude Desktop or Claude Code.
 
 ### "Command not found: uv"
 
