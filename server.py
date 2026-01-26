@@ -1,23 +1,50 @@
 import logging
-import anyio
+import sys
+from contextlib import asynccontextmanager
 from fastmcp import FastMCP
 from notebooklm import NotebookLMClient
 
-# Initialize FastMCP server
-mcp = FastMCP("NotebookLM")
+# Configure logging to stderr (stdout is used for MCP protocol)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    stream=sys.stderr
+)
+logger = logging.getLogger(__name__)
 
 # Client instance (singleton for the session)
 _client = None
+_client_context = None
+
+@asynccontextmanager
+async def lifespan(_app):
+    """Initialize NotebookLM client on server startup."""
+    global _client, _client_context
+    logger.info("Starting NotebookLM MCP server...")
+    try:
+        _client = await NotebookLMClient.from_storage()
+        _client_context = await _client.__aenter__()
+        logger.info("NotebookLM client initialized successfully")
+        yield
+    except Exception as e:
+        logger.error(f"Failed to initialize NotebookLM client: {e}")
+        logger.error("Please run 'uv run notebooklm login' to authenticate.")
+        raise
+    finally:
+        if _client:
+            try:
+                await _client.__aexit__(None, None, None)
+                logger.info("NotebookLM client closed")
+            except Exception as e:
+                logger.error(f"Error closing client: {e}")
+
+# Initialize FastMCP server with lifespan
+mcp = FastMCP("NotebookLM", lifespan=lifespan)
 
 async def get_client():
     global _client
     if _client is None:
-        try:
-            _client = await NotebookLMClient.from_storage()
-            await _client.__aenter__()
-        except Exception as e:
-            logging.error(f"Failed to initialize NotebookLM client: {e}")
-            raise RuntimeError("NotebookLM authentication failed. Please run 'notebooklm login' in your terminal.")
+        raise RuntimeError("NotebookLM client not initialized. Please restart the server.")
     return _client
 
 @mcp.tool()
